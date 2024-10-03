@@ -4,6 +4,7 @@ import logging
 import time
 from mattermostdriver import Driver
 from requests.exceptions import RequestException
+from websocket import WebSocketConnectionClosedException
 
 # Set up application-level logging
 app_debug_mode = os.getenv("APP_DEBUG", "false").lower() == "true"  # Read APP_DEBUG from env (default: false)
@@ -19,7 +20,8 @@ class MattermostBot:
         self.token = os.getenv("MATTERMOST_TOKEN")
         self.team_name = os.getenv("MATTERMOST_TEAM")
         self.port = int(os.getenv("MATTERMOST_PORT", 443))  # Default to 443, but allow override
-        self.reconnect_delay = 10  # Time to wait before attempting reconnection
+        self.poll_interval = 10  # Time to wait between polling for new messages (in seconds)
+        self.reconnect_delay = 15 * 60  # Time to wait (15 minutes) before retrying WebSocket after polling
 
         # Initialize the Mattermost driver with network debugging based on the NETWORK_DEBUG flag
         self.driver = Driver({
@@ -63,8 +65,8 @@ class MattermostBot:
             else:
                 logging.error("Failed to find or create a private channel for the bot.")
 
-            # Start WebSocket connection
-            self.connect_websocket()
+            # Attempt WebSocket connection first, with a fallback to polling
+            self.connect_websocket_or_fallback(bot_user_id, team_id)
 
         except RequestException as e:
             logging.error(f"RequestException during login or API call: {e}")
@@ -101,43 +103,89 @@ class MattermostBot:
             logging.error(f"Error retrieving channel names: {e}")
             return "No channels found."
 
-    def connect_websocket(self):
-        """Attempt to connect to the WebSocket and handle messages."""
-        while True:
-            try:
-                logging.info("Initializing WebSocket connection...")
-                self.driver.init_websocket(self.on_message)
-            except WebSocketConnectionClosedException as e:
-                logging.error(f"WebSocket connection closed: {e}")
-            except Exception as e:
-                logging.error(f"Error with WebSocket connection: {e}")
-            
-            logging.info(f"Reconnecting in {self.reconnect_delay} seconds...")
-            time.sleep(self.reconnect_delay)  # Wait before trying to reconnect
+    def connect_websocket_or_fallback(self, bot_user_id, team_id):
+        """Attempt to connect to WebSocket, and fall back to polling if it fails."""
+        try:
+            logging.info("Attempting WebSocket connection...")
+            self.driver.init_websocket(self.on_message)  # WebSocket message handler
+        except WebSocketConnectionClosedException as e:
+            logging.error(f"WebSocket connection failed: {e}. Switching to polling mode.")
+            self.poll_messages(bot_user_id, team_id)
+        except Exception as e:
+            logging.error(f"Error establishing WebSocket connection: {e}. Switching to polling mode.")
+            self.poll_messages(bot_user_id, team_id)
 
     def on_message(self, message):
-        """Handle incoming messages via WebSocket."""
+        """Handle incoming messages from WebSocket."""
         try:
             logging.info(f"New message received: {message}")
 
-            # Respond to the message (extract channel ID and post a message)
+            # Extract the post data from the message
             if 'event' in message and message['event'] == 'posted':
                 post_data = json.loads(message['data']['post'])
-                channel_id = post_data['channel_id']
-                message_text = post_data['message']
-                user_id = post_data['user_id']
+                self.handle_message(post_data)
 
-                # Check if the message was sent by the bot itself to avoid an infinite loop
-                bot_user = self.driver.users.get_user('me')
-                if user_id == bot_user['id']:
-                    return
+        except RequestException as e:
+            logging.error(f"RequestException handling WebSocket message: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error handling WebSocket message: {e}")
 
-                # If the message contains "hello", respond with "General Kenobi"
-                if "hello" in message_text.lower():
-                    self.driver.posts.create_post({
-                        'channel_id': channel_id,
-                        'message': "General Kenobi"
-                    })
+    def poll_messages(self, bot_user_id, team_id):
+        """Poll the channels for new messages and handle them."""
+        last_checked = int(time.time())  # Start polling from the current time
+        polling_start_time = time.time()  # Track the time when polling starts
+
+        while True:
+            try:
+                logging.info("Polling for new messages...")
+                channels = self.driver.channels.get_channels_for_user(bot_user_id, team_id)
+
+                for channel in channels:
+                    posts = self.driver.posts.get_posts_for_channel(channel['id'], params={'since': last_checked * 1000})
+                    if 'posts' in posts:
+                        for post_id, post_data in posts['posts'].items():
+                            self.handle_message(post_data)
+
+                last_checked = int(time.time())
+
+                # Check if 15 minutes have passed to retry WebSocket
+                if time.time() - polling_start_time >= self.reconnect_delay:
+                    logging.info("15 minutes of polling passed. Retrying WebSocket connection.")
+                    try:
+                        self.connect_websocket_or_fallback(bot_user_id, team_id)
+                        break  # Exit polling loop if WebSocket succeeds
+                    except WebSocketConnectionClosedException as e:
+                        logging.error(f"WebSocket reconnection failed: {e}. Continuing polling.")
+                        polling_start_time = time.time()  # Reset polling start time after WebSocket failure
+
+            except RequestException as e:
+                logging.error(f"RequestException while polling for messages: {e}")
+            except Exception as e:
+                logging.error(f"Unexpected error while polling for messages: {e}")
+
+            logging.info(f"Sleeping for {self.poll_interval} seconds before next poll...")
+            time.sleep(self.poll_interval)
+
+    def handle_message(self, post_data):
+        """Process a new message."""
+        try:
+            logging.info(f"New message received: {post_data}")
+
+            channel_id = post_data['channel_id']
+            message_text = post_data['message']
+            user_id = post_data['user_id']
+
+            # Check if the message was sent by the bot itself to avoid an infinite loop
+            bot_user = self.driver.users.get_user('me')
+            if user_id == bot_user['id']:
+                return
+
+            # If the message contains "hello", respond with "General Kenobi"
+            if "hello" in message_text.lower():
+                self.driver.posts.create_post({
+                    'channel_id': channel_id,
+                    'message': "General Kenobi"
+                })
 
         except RequestException as e:
             logging.error(f"RequestException handling message: {e}")
@@ -151,5 +199,5 @@ if __name__ == "__main__":
             bot.run()
         except Exception as e:
             logging.error(f"Bot crashed with error: {e}")
-            logging.info(f"Restarting bot in {bot.reconnect_delay} seconds...")
-            time.sleep(bot.reconnect_delay)
+            logging.info(f"Restarting bot in {bot.poll_interval} seconds...")
+            time.sleep(bot.poll_interval)
