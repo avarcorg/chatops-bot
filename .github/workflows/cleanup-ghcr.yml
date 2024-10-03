@@ -1,0 +1,58 @@
+name: Clean Up Untagged GHCR Images
+
+on:
+  push:
+    paths:
+      - .github/workflows/cleanup-ghcr.yml
+  schedule:
+    # Run every Monday at 6:00 AM UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+  # Allows manual triggering of the workflow
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAMES: "avarc-chatops-bot"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Randomize start time
+        run: |
+          # Introduce a random delay between 0 and 59 minutes
+          RANDOM_DELAY=$((RANDOM % 3600))
+          echo "Waiting for $RANDOM_DELAY seconds before starting the cleanup"
+          # sleep $RANDOM_DELAY
+
+      - name: Set up GitHub CLI with GHCR_TOKEN
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          echo "GitHub CLI is set up with GH_TOKEN"
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Clean up untagged GHCR images
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          for IMAGE in $IMAGE_NAMES; do
+            echo "Cleaning up untagged images for $IMAGE"
+
+            # Get the list of untagged image versions from the GitHub Container Registry
+            VERSION_IDS=$(gh api --paginate \
+                -H "Accept: application/vnd.github.v3+json" \
+                /orgs/${{ github.repository_owner }}/packages/container/$IMAGE/versions | jq -r '.[] | select((.metadata.container.tags | length == 0) or (.metadata.container.tags == null)) | .id')
+
+            # Delete each untagged image version
+            for VERSION_ID in $VERSION_IDS; do
+              echo "Deleting untagged image with version ID $VERSION_ID"
+              gh api \
+                --method DELETE \
+                -H "Accept: application/vnd.github.v3+json" \
+                /orgs/${{ github.repository_owner }}/packages/container/$IMAGE/versions/$VERSION_ID
+            done
+          done
