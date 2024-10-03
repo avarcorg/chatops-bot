@@ -28,6 +28,7 @@ jobs:
       - name: Build Docker Image
         run: |
           docker build \
+            --build-arg GITHUB_REPOSITORY=${{ github.repository }} \
             --build-arg GIT_COMMIT_SHA=${{ steps.vars.outputs.commit_sha }} \
             --build-arg VERSION=latest \
             -t ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:latest \
