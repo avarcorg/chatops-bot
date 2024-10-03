@@ -9,11 +9,14 @@ ENV MATTERMOST_TEAM="your-team-name"
 # Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy the current directory contents into the container
-COPY . .
+# Copy the requirements.txt file into the container
+COPY requirements.txt .
 
 # Install any necessary dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the current directory contents into the container
+COPY . .
 
 # Make port 8065 available to the world outside this container (optional)
 EXPOSE 8065
