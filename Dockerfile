@@ -6,6 +6,11 @@ ENV MATTERMOST_URL="your-mattermost-url"
 ENV MATTERMOST_TOKEN="your-mattermost-api-token"
 ENV MATTERMOST_TEAM="your-team-name"
 
+# Declare build arguments
+ARG GITHUB_REPOSITORY
+ARG GIT_COMMIT_SHA
+ARG VERSION
+
 # Set OCI-compliant labels with placeholders for dynamic values
 LABEL org.opencontainers.image.title="Mattermost Python Bot"
 LABEL org.opencontainers.image.description="A Mattermost bot written in Python using the Mattermost API."
