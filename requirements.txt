@@ -1,2 +1,2 @@
-mattermostdriver==7.2.0
+mattermostdriver==7.3.2
 websocket-client==1.8.0
