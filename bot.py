@@ -8,11 +8,14 @@ from websocket import WebSocketConnectionClosedException
 
 # Set up application-level logging
 app_debug_mode = os.getenv("APP_DEBUG", "false").lower() == "true"  # Read APP_DEBUG from env (default: false)
+network_debug_mode = os.getenv("NETWORK_DEBUG", "false").lower() == "true"  # Read NETWORK_DEBUG from env (default: false)
+
 app_log_level = logging.DEBUG if app_debug_mode else logging.INFO
 logging.basicConfig(level=app_log_level)
 
-# Set up network-level debugging for Mattermost API calls
-network_debug_mode = os.getenv("NETWORK_DEBUG", "false").lower() == "true"  # Read NETWORK_DEBUG from env (default: false)
+# Set up initial network-level logging for urllib3
+initial_urllib3_log_level = logging.DEBUG if network_debug_mode else logging.WARNING
+logging.getLogger("urllib3").setLevel(initial_urllib3_log_level)
 
 class MattermostBot:
     def __init__(self):
@@ -105,6 +108,8 @@ class MattermostBot:
 
     def connect_websocket_or_fallback(self, bot_user_id, team_id):
         """Attempt to connect to WebSocket, and fall back to polling if it fails."""
+        # Temporarily enable urllib3 debug logging for WebSocket initialization
+        logging.getLogger("urllib3").setLevel(logging.DEBUG)
         try:
             logging.info("Attempting WebSocket connection...")
             self.driver.init_websocket(self.on_message)  # WebSocket message handler
@@ -114,6 +119,9 @@ class MattermostBot:
         except Exception as e:
             logging.error(f"Error establishing WebSocket connection: {e}. Switching to polling mode.")
             self.poll_messages(bot_user_id, team_id)
+        finally:
+            # Restore original logging level for urllib3 after WebSocket initialization
+            logging.getLogger("urllib3").setLevel(initial_urllib3_log_level)
 
     def on_message(self, message):
         """Handle incoming messages from WebSocket."""
