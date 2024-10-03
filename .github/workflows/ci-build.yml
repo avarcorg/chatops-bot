@@ -10,9 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      GHCR_ORG: avarcorg
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
