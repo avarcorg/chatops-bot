@@ -35,6 +35,11 @@ jobs:
             -t ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:${{ steps.vars.outputs.commit_sha }} \
             .
 
+      - name: Inspect Docker image labels
+        run: |
+          echo "Inspecting labels for latest image:"
+          docker inspect --format='{{json .Config.Labels}}' ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:latest | jq
+
       - name: Push Docker Image
         run: |
           echo
