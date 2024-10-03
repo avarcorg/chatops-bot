@@ -9,6 +9,7 @@ ENV MATTERMOST_TEAM="your-team-name"
 # Declare build arguments
 ARG GITHUB_REPOSITORY
 ARG GIT_COMMIT_SHA
+ARG CREATED
 ARG VERSION
 
 # Set OCI-compliant labels with placeholders for dynamic values
@@ -22,6 +23,7 @@ LABEL org.opencontainers.image.licenses="Apache-2.0"
 LABEL org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}"
 LABEL org.opencontainers.image.revision="${GIT_COMMIT_SHA}"
 LABEL org.opencontainers.image.documentation="https://github.com/${GITHUB_REPOSITORY}/wiki"
+LABEL org.opencontainers.image.created="${CREATED}"
 
 # Set the working directory in the container
 WORKDIR /usr/src/app
