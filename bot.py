@@ -198,6 +198,11 @@ if __name__ == "__main__":
                 logging.info(f"Restarting bot in {bot.poll_interval} seconds...")
                 await asyncio.sleep(bot.poll_interval)  # Use asyncio.sleep in async code
 
-    # Main loop setup to handle already running event loop
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_bot())
+    # Check if the event loop is already running
+    try:
+        loop = asyncio.get_running_loop()
+        logging.info("Event loop is already running. Creating task for the bot.")
+        loop.create_task(run_bot())
+    except RuntimeError:  # No loop is running
+        logging.info("No event loop running. Starting new event loop.")
+        asyncio.run(run_bot())
