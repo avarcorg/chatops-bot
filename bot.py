@@ -5,6 +5,7 @@ import time
 from mattermostdriver import Driver
 from requests.exceptions import RequestException
 from websocket import WebSocketConnectionClosedException
+from message_handler import handle_message  # Import the handle_message function
 
 # Set up application-level logging
 app_debug_mode = os.getenv("APP_DEBUG", "false").lower() == "true"  # Read APP_DEBUG from env (default: false)
@@ -131,7 +132,7 @@ class MattermostBot:
             # Extract the post data from the message
             if 'event' in message and message['event'] == 'posted':
                 post_data = json.loads(message['data']['post'])
-                self.handle_message(post_data)
+                handle_message(self.driver, post_data)  # Use the imported handle_message
 
         except RequestException as e:
             logging.error(f"RequestException handling WebSocket message: {e}")
@@ -152,7 +153,7 @@ class MattermostBot:
                     posts = self.driver.posts.get_posts_for_channel(channel['id'], params={'since': last_checked * 1000})
                     if 'posts' in posts:
                         for post_id, post_data in posts['posts'].items():
-                            self.handle_message(post_data)
+                            handle_message(self.driver, post_data)  # Use the imported handle_message
 
                 last_checked = int(time.time())
 
@@ -173,32 +174,6 @@ class MattermostBot:
 
             logging.info(f"Sleeping for {self.poll_interval} seconds before next poll...")
             time.sleep(self.poll_interval)
-
-    def handle_message(self, post_data):
-        """Process a new message."""
-        try:
-            logging.info(f"New message received: {post_data}")
-
-            channel_id = post_data['channel_id']
-            message_text = post_data['message']
-            user_id = post_data['user_id']
-
-            # Check if the message was sent by the bot itself to avoid an infinite loop
-            bot_user = self.driver.users.get_user('me')
-            if user_id == bot_user['id']:
-                return
-
-            # If the message contains "hello", respond with "General Kenobi"
-            if "hello" in message_text.lower():
-                self.driver.posts.create_post({
-                    'channel_id': channel_id,
-                    'message': "General Kenobi"
-                })
-
-        except RequestException as e:
-            logging.error(f"RequestException handling message: {e}")
-        except Exception as e:
-            logging.error(f"Unexpected error handling message: {e}")
 
 if __name__ == "__main__":
     bot = MattermostBot()
