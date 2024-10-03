@@ -25,12 +25,17 @@ jobs:
         id: vars
         run: echo "::set-output name=commit_sha::$(git rev-parse --short HEAD)"
 
+      - name: Get current timestamp
+        id: created
+        run: echo "::set-output name=created::$(date --utc +%Y-%m-%dT%H:%M:%SZ)"
+
       - name: Build Docker Image
         run: |
           docker build \
             --build-arg GITHUB_REPOSITORY=${{ github.repository }} \
             --build-arg GIT_COMMIT_SHA=${{ steps.vars.outputs.commit_sha }} \
             --build-arg VERSION=latest \
+            --build-arg CREATED=${{ steps.created.outputs.created }} \            
             -t ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:latest \
             -t ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:${{ steps.vars.outputs.commit_sha }} \
             .
