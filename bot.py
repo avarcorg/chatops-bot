@@ -16,10 +16,6 @@ network_debug_mode = os.getenv("NETWORK_DEBUG", "false").lower() == "true"  # Re
 app_log_level = logging.DEBUG if app_debug_mode else logging.INFO
 logging.basicConfig(level=app_log_level)
 
-# Set up initial network-level logging for urllib3
-initial_urllib3_log_level = logging.DEBUG if network_debug_mode else logging.WARNING
-logging.getLogger("urllib3").setLevel(initial_urllib3_log_level)
-
 class MattermostBot:
     def __init__(self):
         self.url = os.getenv("MATTERMOST_URL")  # Domain without scheme
@@ -106,8 +102,6 @@ class MattermostBot:
 
     async def connect_websocket_or_fallback(self, bot_user_id, team_id):
         """Attempt to connect to WebSocket, and fall back to polling if it fails."""
-        # Temporarily enable urllib3 debug logging for WebSocket initialization
-        logging.getLogger("urllib3").setLevel(logging.DEBUG)
         try:
             logging.info("Attempting WebSocket connection...")
 
@@ -120,9 +114,6 @@ class MattermostBot:
         except Exception as e:
             logging.error(f"Error establishing WebSocket connection: {e}. Switching to polling mode.")
             await self.poll_messages(bot_user_id, team_id)
-        finally:
-            # Restore original logging level for urllib3 after WebSocket initialization
-            logging.getLogger("urllib3").setLevel(initial_urllib3_log_level)
 
     async def on_message(self, message):
         """Handle incoming messages from WebSocket."""
