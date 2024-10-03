@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import time
+import asyncio
 from mattermostdriver import Driver
 from requests.exceptions import RequestException
 from websocket import WebSocketConnectionClosedException
@@ -38,7 +39,7 @@ class MattermostBot:
             'debug': network_debug_mode  # Enable or disable network debug mode based on the NETWORK_DEBUG flag
         })
 
-    def run(self):
+    async def run(self):
         try:
             logging.info("Logging in to Mattermost...")
             self.driver.login()
@@ -66,7 +67,7 @@ class MattermostBot:
                 logging.error("Failed to find or create a private channel for the bot.")
 
             # Attempt WebSocket connection first, with a fallback to polling
-            self.connect_websocket_or_fallback(bot_user_id, team_id)
+            await self.connect_websocket_or_fallback(bot_user_id, team_id)
 
         except RequestException as e:
             logging.error(f"RequestException during login or API call: {e}")
@@ -103,39 +104,50 @@ class MattermostBot:
             logging.error(f"Error retrieving channel names: {e}")
             return "No channels found."
 
-    def connect_websocket_or_fallback(self, bot_user_id, team_id):
+    async def connect_websocket_or_fallback(self, bot_user_id, team_id):
         """Attempt to connect to WebSocket, and fall back to polling if it fails."""
         # Temporarily enable urllib3 debug logging for WebSocket initialization
         logging.getLogger("urllib3").setLevel(logging.DEBUG)
         try:
             logging.info("Attempting WebSocket connection...")
-            self.driver.init_websocket(self.on_message)  # WebSocket message handler
+
+            # Await WebSocket connection if it's async
+            await self.driver.init_websocket(self.on_message)  # WebSocket message handler
+
         except WebSocketConnectionClosedException as e:
             logging.error(f"WebSocket connection failed: {e}. Switching to polling mode.")
-            self.poll_messages(bot_user_id, team_id)
+            await self.poll_messages(bot_user_id, team_id)
         except Exception as e:
             logging.error(f"Error establishing WebSocket connection: {e}. Switching to polling mode.")
-            self.poll_messages(bot_user_id, team_id)
+            await self.poll_messages(bot_user_id, team_id)
         finally:
             # Restore original logging level for urllib3 after WebSocket initialization
             logging.getLogger("urllib3").setLevel(initial_urllib3_log_level)
 
-    def on_message(self, message):
+    async def on_message(self, message):
         """Handle incoming messages from WebSocket."""
         try:
             logging.info(f"New message received: {message}")
+
+            # Ensure the message is parsed as JSON
+            if isinstance(message, str):
+                message = json.loads(message)
 
             # Extract the post data from the message
             if 'event' in message and message['event'] == 'posted':
                 post_data = json.loads(message['data']['post'])
                 handle_message(self.driver, post_data)  # Use the imported handle_message
 
+        except json.JSONDecodeError as e:
+            logging.error(f"Error decoding JSON message: {e}")
+        except KeyError as e:
+            logging.error(f"KeyError: Missing key {e} in message: {message}")
         except RequestException as e:
             logging.error(f"RequestException handling WebSocket message: {e}")
         except Exception as e:
             logging.error(f"Unexpected error handling WebSocket message: {e}")
 
-    def poll_messages(self, bot_user_id, team_id):
+    async def poll_messages(self, bot_user_id, team_id):
         """Poll the channels for new messages and handle them."""
         last_checked = int(time.time())  # Start polling from the current time
         polling_start_time = time.time()  # Track the time when polling starts
@@ -157,7 +169,7 @@ class MattermostBot:
                 if time.time() - polling_start_time >= self.reconnect_delay:
                     logging.info("15 minutes of polling passed. Retrying WebSocket connection.")
                     try:
-                        self.connect_websocket_or_fallback(bot_user_id, team_id)
+                        await self.connect_websocket_or_fallback(bot_user_id, team_id)
                         break  # Exit polling loop if WebSocket succeeds
                     except WebSocketConnectionClosedException as e:
                         logging.error(f"WebSocket reconnection failed: {e}. Continuing polling.")
@@ -169,14 +181,20 @@ class MattermostBot:
                 logging.error(f"Unexpected error while polling for messages: {e}")
 
             logging.info(f"Sleeping for {self.poll_interval} seconds before next poll...")
-            time.sleep(self.poll_interval)
+            await asyncio.sleep(self.poll_interval)
 
 if __name__ == "__main__":
     bot = MattermostBot()
-    while True:
-        try:
-            bot.run()
-        except Exception as e:
-            logging.error(f"Bot crashed with error: {e}")
-            logging.info(f"Restarting bot in {bot.poll_interval} seconds...")
-            time.sleep(bot.poll_interval)
+
+    async def run_bot():
+        while True:
+            try:
+                await bot.run()  # Run the bot asynchronously
+            except Exception as e:
+                logging.error(f"Bot crashed with error: {e}")
+                logging.info(f"Restarting bot in {bot.poll_interval} seconds...")
+                await asyncio.sleep(bot.poll_interval)  # Use asyncio.sleep in async code
+
+    # Main loop setup to handle already running event loop
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_bot())
