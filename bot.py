@@ -6,6 +6,7 @@ from mattermostdriver import Driver
 from requests.exceptions import RequestException
 from websocket import WebSocketConnectionClosedException
 from message_handler import handle_message  # Import the handle_message function
+from channel_notification import send_initial_channel_notification  # Import the notification function
 
 # Set up application-level logging
 app_debug_mode = os.getenv("APP_DEBUG", "false").lower() == "true"  # Read APP_DEBUG from env (default: false)
@@ -58,14 +59,9 @@ class MattermostBot:
             # Find or create a direct message (DM) channel with the bot user
             private_channel_id = self.get_private_channel(bot_user_id)
             if private_channel_id:
-                # Get all channel names and send the announcement to the private DM channel
+                # Get all channel names and send the notification using the external function
                 channel_names = self.get_channel_names(bot_user_id, team_id)
-                assist_message = f"Bot is now active and ready to assist. Here are the channels you have access to:\n{channel_names}"
-                logging.info("Sending announcement to bot's private channel.")
-                self.driver.posts.create_post({
-                    'channel_id': private_channel_id,
-                    'message': assist_message
-                })
+                send_initial_channel_notification(self.driver, private_channel_id, channel_names)
             else:
                 logging.error("Failed to find or create a private channel for the bot.")
 
