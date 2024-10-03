@@ -7,5 +7,4 @@ from mattermostdriver import Driver
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
-    print "Hello World"
-                                                                    
+    print("Hello World")
