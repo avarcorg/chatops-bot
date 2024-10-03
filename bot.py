@@ -3,6 +3,7 @@ import json
 import logging
 import time
 import asyncio
+import traceback  # Added for traceback handling
 from mattermostdriver import Driver
 from requests.exceptions import RequestException
 from websocket import WebSocketConnectionClosedException
@@ -69,6 +70,7 @@ class MattermostBot:
             logging.error(f"RequestException during login or API call: {e}")
         except Exception as e:
             logging.error(f"Unexpected error occurred: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
 
     def get_private_channel(self, bot_user_id):
         """Find or create a private DM channel for the bot."""
@@ -86,6 +88,7 @@ class MattermostBot:
                 return None
         except Exception as e:
             logging.error(f"Error getting private channel: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
             return None
 
     def get_channel_names(self, bot_user_id, team_id):
@@ -98,6 +101,7 @@ class MattermostBot:
             return '\n'.join(channel_names)  # Return channel names as a newline-separated string
         except Exception as e:
             logging.error(f"Error retrieving channel names: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
             return "No channels found."
 
     async def connect_websocket_or_fallback(self, bot_user_id, team_id):
@@ -112,7 +116,8 @@ class MattermostBot:
             logging.error(f"WebSocket connection failed: {e}. Switching to polling mode.")
             await self.poll_messages(bot_user_id, team_id)
         except Exception as e:
-            logging.error(f"Error establishing WebSocket connection: {e}. Switching to polling mode.")
+            logging.error(f"Error establishing WebSocket connection: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
             await self.poll_messages(bot_user_id, team_id)
 
     async def on_message(self, message):
@@ -131,12 +136,16 @@ class MattermostBot:
 
         except json.JSONDecodeError as e:
             logging.error(f"Error decoding JSON message: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
         except KeyError as e:
             logging.error(f"KeyError: Missing key {e} in message: {message}")
+            logging.error(traceback.format_exc())  # Print full traceback
         except RequestException as e:
             logging.error(f"RequestException handling WebSocket message: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
         except Exception as e:
             logging.error(f"Unexpected error handling WebSocket message: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
 
     async def poll_messages(self, bot_user_id, team_id):
         """Poll the channels for new messages and handle them."""
@@ -168,8 +177,10 @@ class MattermostBot:
 
             except RequestException as e:
                 logging.error(f"RequestException while polling for messages: {e}")
+                logging.error(traceback.format_exc())  # Print full traceback
             except Exception as e:
                 logging.error(f"Unexpected error while polling for messages: {e}")
+                logging.error(traceback.format_exc())  # Print full traceback
 
             logging.info(f"Sleeping for {self.poll_interval} seconds before next poll...")
             await asyncio.sleep(self.poll_interval)
@@ -183,6 +194,7 @@ if __name__ == "__main__":
                 await bot.run()  # Run the bot asynchronously
             except Exception as e:
                 logging.error(f"Bot crashed with error: {e}")
+                logging.error(traceback.format_exc())  # Print full traceback
                 logging.info(f"Restarting bot in {bot.poll_interval} seconds...")
                 await asyncio.sleep(bot.poll_interval)  # Use asyncio.sleep in async code
 
