@@ -1,0 +1,30 @@
+name: Build and Push Docker Image to GHCR
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      GHCR_ORG: avarcorg
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to GHCR
+        run: echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+
+      - name: Build Docker Image
+        run: docker build -t ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:latest .
+
+      - name: Push Docker Image
+        run: |
+          echo
+          docker images | grep -v "IMAGE ID" | sort
+          docker push ghcr.io/${{ env.GHCR_ORG }}/avarc-chatops-bot:latest
