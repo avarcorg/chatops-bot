@@ -24,6 +24,7 @@ logging.getLogger('channel_notification').setLevel(app_log_level)
 class MattermostBot:
     def __init__(self):
         self.host = os.getenv("MATTERMOST_HOST")
+        self.scheme = os.getenv("MATTERMOST_SCHEME", "https")
         self.token = os.getenv("MATTERMOST_TOKEN")
         self.team_name = os.getenv("MATTERMOST_TEAM")
         self.port = int(os.getenv("MATTERMOST_PORT", 443))  # Default to 443, but allow override
@@ -32,10 +33,10 @@ class MattermostBot:
 
         # Initialize the Mattermost driver with network debugging based on the NETWORK_DEBUG flag
         self.driver = Driver({
-            'url': self.host,  # Use MATTERMOST_HOST here instead of MATTERMOST_URL
+            'url': self.host,
             'token': self.token,
-            'scheme': 'https',  # Use https for port 443
-            'port': self.port,  # Default to port 443, or custom port via env
+            'scheme': self.scheme,
+            'port': self.port,
             'verify': True,  # SSL verification
             'debug': network_debug_mode  # Enable or disable network debug mode based on the NETWORK_DEBUG flag
         })
