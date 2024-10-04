@@ -11,15 +11,19 @@ from message_handler import handle_message  # Import the handle_message function
 from channel_notification import send_initial_channel_notification  # Import the notification function
 
 # Set up application-level logging
-app_debug_mode = os.getenv("APP_DEBUG", "false").lower() == "true"  # Read APP_DEBUG from env (default: false)
-network_debug_mode = os.getenv("NETWORK_DEBUG", "false").lower() == "true"  # Read NETWORK_DEBUG from env (default: false)
-
+app_debug_mode = os.getenv("APP_DEBUG", "false").lower() == "true"
 app_log_level = logging.DEBUG if app_debug_mode else logging.INFO
 logging.basicConfig(level=app_log_level)
 
 # Configure dedicated loggers for message_handler and channel_notification
 logging.getLogger('message_handler').setLevel(logging.DEBUG)
 logging.getLogger('channel_notification').setLevel(app_log_level)
+
+# Set up network-level logging
+network_debug_mode = os.getenv("NETWORK_DEBUG", "false").lower() == "true"
+network_log_level = logging.DEBUG if network_debug_mode else logging.INFO
+
+logging.getLogger('mattermostdriver.websocket').setLevel(network_log_level)
 
 class MattermostBot:
     def __init__(self):
