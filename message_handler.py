@@ -16,7 +16,9 @@ logger = logging.getLogger('message_handler')
 logger.setLevel(logging.DEBUG)
 
 # Create handlers for both file and console
-file_handler = logging.FileHandler(log_file)
+file_handler = TimedRotatingFileHandler(log_file, when="midnight", interval=1, backupCount=30)
+file_handler.suffix = "%Y-%m-%d"  # Log files will be named with a date suffix
+
 console_handler = logging.StreamHandler()
 
 # Set log level for each handler (optional)
