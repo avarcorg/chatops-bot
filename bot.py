@@ -154,7 +154,7 @@ class MattermostBot:
 
         while True:
             try:
-                logging.info("Polling for new messages...")
+                logging.debug("Polling for new messages...")
                 channels = self.driver.channels.get_channels_for_user(bot_user_id, team_id)
 
                 for channel in channels:
@@ -182,7 +182,7 @@ class MattermostBot:
                 logging.error(f"Unexpected error while polling for messages: {e}")
                 logging.error(traceback.format_exc())  # Print full traceback
 
-            logging.info(f"Sleeping for {self.poll_interval} seconds before next poll...")
+            logging.debug(f"Sleeping for {self.poll_interval} seconds before next poll...")
             await asyncio.sleep(self.poll_interval)
 
 if __name__ == "__main__":
