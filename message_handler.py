@@ -1,8 +1,37 @@
 import logging
-from requests.exceptions import RequestException
+import os
+
+# Define the log directory and file
+log_directory = 'logs'
+log_file = os.path.join(log_directory, 'message_handler.log')
+
+# Create the log directory if it doesn't exist
+if not os.path.exists(log_directory):
+    os.makedirs(log_directory, exist_ok=True)
 
 # Create a dedicated logger for message_handler
 logger = logging.getLogger('message_handler')
+
+# Set logging level (this can be customized)
+logger.setLevel(logging.DEBUG)
+
+# Create handlers for both file and console
+file_handler = logging.FileHandler(log_file)
+console_handler = logging.StreamHandler()
+
+# Set log level for each handler (optional)
+file_handler.setLevel(logging.DEBUG)
+console_handler.setLevel(logging.DEBUG)
+
+# Create a logging format
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# Add handlers to the logger
+if not logger.hasHandlers():  # To prevent adding multiple handlers if reloaded
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
 def handle_message(driver, post_data):
     """Process a new message."""
