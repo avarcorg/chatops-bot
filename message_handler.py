@@ -82,7 +82,7 @@ def handle_message(driver, post_data):
         if contains_help_keyword(message):
             response += "Here are the commands I respond to: ..."
         elif contains_hello_keyword(message):
-            response += "Hello again, General Kenobi :crossed_swords:"
+            response += "... again, General Kenobi :crossed_swords:"
 
         if response:
             send_mattermost_message(driver, channel_id, response)
