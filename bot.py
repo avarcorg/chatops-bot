@@ -17,6 +17,10 @@ network_debug_mode = os.getenv("NETWORK_DEBUG", "false").lower() == "true"  # Re
 app_log_level = logging.DEBUG if app_debug_mode else logging.INFO
 logging.basicConfig(level=app_log_level)
 
+# Configure dedicated loggers for message_handler and channel_notification
+logging.getLogger('message_handler').setLevel(logging.DEBUG)
+logging.getLogger('channel_notification').setLevel(app_log_level)
+
 class MattermostBot:
     def __init__(self):
         self.host = os.getenv("MATTERMOST_HOST")

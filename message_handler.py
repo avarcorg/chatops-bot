@@ -1,10 +1,13 @@
 import logging
 from requests.exceptions import RequestException
 
+# Create a dedicated logger for message_handler
+logger = logging.getLogger('message_handler')
+
 def handle_message(driver, post_data):
     """Process a new message."""
     try:
-        logging.info(f"New message received: {post_data}")
+        logger.info(f"New message received: {post_data}")
 
         channel_id = post_data['channel_id']
         message_text = post_data['message']
@@ -23,6 +26,6 @@ def handle_message(driver, post_data):
             })
 
     except RequestException as e:
-        logging.error(f"RequestException handling message: {e}")
+        logger.error(f"RequestException handling message: {e}")
     except Exception as e:
-        logging.error(f"Unexpected error handling message: {e}")
+        logger.error(f"Unexpected error handling message: {e}")
