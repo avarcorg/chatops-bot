@@ -1,5 +1,6 @@
 import logging
 from logging.handlers import TimedRotatingFileHandler
+from requests.exceptions import RequestException
 import os
 
 # Define the log directory and file
@@ -36,13 +37,33 @@ if not logger.hasHandlers():  # To prevent adding multiple handlers if reloaded
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
+def is_direct_message(message):
+    """Detect if the message was sent directly to the bot or starts with 'bot' (case insensitive)."""
+    words = message.lower().split()
+    logging.info(f"is_direct_message: list of words: {words}")
+    return "avarc-chatops-bot" in words[0].lower()
+
+def contains_hello_keyword(message):
+    """Check if the message contains the word 'hello' (case insensitive)."""
+    words = message.lower().split()
+    # logging.info(f"contains_hello_keyword: list of words: {words}")
+    return any(word == "hello" for word in words)
+
+def contains_help_keyword(message):
+    """Check if the message contains the word 'help' (case insensitive)."""
+    words = message.lower().split()
+    # logging.info(f"contains_help_keyword: list of words: {words}")
+    return any(word == "help" for word in words)
+
 def handle_message(driver, post_data):
     """Process a new message."""
     try:
+        logger.info("")
         logger.info(f"New message received: {post_data}")
+        logger.info("")
 
         channel_id = post_data['channel_id']
-        message_text = post_data['message']
+        message = post_data['message']
         user_id = post_data['user_id']
 
         # Check if the message was sent by the bot itself to avoid an infinite loop
@@ -50,13 +71,37 @@ def handle_message(driver, post_data):
         if user_id == bot_user['id']:
             return
 
-        # If the message contains "hello", respond with "General Kenobi"
-        if "hello" in message_text.lower():
-            driver.posts.create_post({
-                'channel_id': channel_id,
-                'message': "General Kenobi"
-            })
+        response = ""
 
+        if is_direct_message(message):
+            response = "Are you talking to me? :rocket:"
+
+        if response:
+            response += "\n"
+
+        if contains_help_keyword(message):
+            response += "Here are the commands I respond to: ..."
+        elif contains_hello_keyword(message):
+            response += "Hello again, General Kenobi :crossed_swords:"
+
+        if response:
+            send_mattermost_message(driver, channel_id, response)
+        else:
+            logger.info(f"Message received but not directed at the bot and contains no keywords: '{message}'")
+
+    except RequestException as e:
+        logger.error(f"RequestException handling message: {e}")
+    except Exception as e:
+        logger.error(f"Unexpected error handling message: {e}")
+
+def send_mattermost_message(driver, channel_id, message: str):
+    try:
+        logger.info(f"send_mattermost_message: '{message}'")
+
+        driver.posts.create_post({
+            'channel_id': channel_id,
+            'message': message
+        })
     except RequestException as e:
         logger.error(f"RequestException handling message: {e}")
     except Exception as e:
