@@ -4,6 +4,7 @@ import logging
 import time
 import asyncio
 import traceback  # Added for traceback handling
+import sys # Added to allow termination
 from mattermostdriver import Driver
 from requests.exceptions import RequestException
 from websocket import WebSocketConnectionClosedException
@@ -121,6 +122,12 @@ class MattermostBot:
             # Await WebSocket connection if it's async
             await self.driver.init_websocket(self.on_message)  # WebSocket message handler
 
+        except RuntimeError as e:
+            # raise RuntimeError('This event loop is already running')
+            logging.error(f"RuntimeError during WebSocket initialization: {e}")
+            logging.error(traceback.format_exc())  # Print full traceback
+            logging.error("Terminating bot due to event loop conflict.")
+            sys.exit(1)  # Terminate the bot
         except WebSocketConnectionClosedException as e:
             logging.error(f"WebSocket connection failed: {e}. Switching to polling mode.")
             await self.poll_messages(bot_user_id, team_id)
