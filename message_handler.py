@@ -2,6 +2,8 @@ import logging
 from logging.handlers import TimedRotatingFileHandler
 from requests.exceptions import RequestException
 import os
+import sys
+import time
 
 # Define the log directory and file
 log_directory = 'logs'
@@ -53,6 +55,34 @@ def contains_restart_keyword(words=None):
     # logging.info(f"contains_restart_keyword: list of words: {words}")
     return any(word == "restart" for word in words)
 
+def handle_restart_message(driver, channel_id, words:None):
+    if "restart" in words:
+        restart_index = words.index("restart")
+
+        logger.info(f"Checking what to restart: '{words}', restart: {restart_index}, length: {len(words)}")
+
+        if restart_index + 1 == len(words):
+            what_to_restart_message = "Restart? I know how to restart:\n"
+            what_to_restart_message += "... myself\n"
+            what_to_restart_message += "... backend\n"
+            what_to_restart_message += "Maybe tell me explicitly what you want me to do :sweat_smile:"
+            send_mattermost_message(driver, channel_id, what_to_restart_message)
+        elif restart_index + 1 < len(words):
+            if words[restart_index + 1] == "yourself":
+                # If "yourself" is detected after "restart", send the seppuku message and exit
+                restart_myself_message = "I shall restart myself? Hopefully my scion will be an improved version... :innocent:"
+                send_mattermost_message(driver, channel_id, restart_myself_message)
+                time.sleep(5)
+                sys.exit(0)  # Exit with success code 0
+            else:
+                unknown_service_message = "I don't know what this is, staying my hand..."
+                send_mattermost_message(driver, channel_id, unknown_service_message)
+                # If "yourself" is not detected, respond and create a shell script in the "flag" directory
+                pass
+        else:
+            send_mattermost_message(driver, channel_id, "WUD ???")
+
+
 def handle_message(driver, post_data):
     """Process a new message."""
     try:
@@ -69,8 +99,6 @@ def handle_message(driver, post_data):
         if user_id == bot_user['id']:
             return
 
-        response = ""
-
         # Split the message into parts (by whitespace) and store in the "words" array
         words = message_text.lower().split()
         if words is None:
@@ -79,28 +107,25 @@ def handle_message(driver, post_data):
         logging.info(f"incoming message: list of words: {words}")
 
         if is_direct_message(words):
-            response = "Are you talking to me :thinking_face: :question:"
-        elif contains_restart_keyword(words):
-            response += "What should I restart :question:"
-
-        if response:
-            response += "\n"
+            if contains_restart_keyword(words):
+                handle_restart_message(driver, channel_id, words)
+            else:
+                send_mattermost_message(driver,
+                                        channel_id,
+                                        "Are you talking to me :thinking_face: :question:")
 
         if contains_help_keyword(words):
-            response += "Here are the commands I respond to: ..."
+            response = "Here are the commands I respond to: ..."
             response += "\n"
             response += "  hello - Try it :wink:"
             response += "\n"
             response += "  help - This message :nerd_face:"
             response += "\n"
             response += "  restart - Restart something on the server"
-        elif contains_hello_keyword(words):
-            response += "... again, General Kenobi :crossed_swords:"
-
-        if response:
             send_mattermost_message(driver, channel_id, response)
-        else:
-            logger.info(f"Message received but not directed at the bot and contains no keywords: '{message_text}'")
+        elif contains_hello_keyword(words):
+            response = "... again, General Kenobi :crossed_swords:"
+            send_mattermost_message(driver, channel_id, response)
 
     except RequestException as e:
         logger.error(f"RequestException handling message: {e}")
