@@ -39,7 +39,7 @@ if not logger.hasHandlers():  # To prevent adding multiple handlers if reloaded
 
 def is_direct_message(words=None):
     logging.info(f"is_direct_message: list of words: {words}")
-    return words[0].lower().startswith("avarc-chatops-bot")
+    return words[0].lower().startswith("@avarc-chatops-bot")
 
 def contains_hello_keyword(words=None):
     # logging.info(f"contains_hello_keyword: list of words: {words}")
