@@ -1,0 +1,10 @@
+[Unit]
+Description=Timer to restart avarc-chatopts-bot service
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+OnCalendar=*-*-* 14:00:00
+Unit=avarc-chatopts-bot-restart.service
+
+[Install]
+WantedBy=timers.target

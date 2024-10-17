@@ -1,0 +1,6 @@
+[Unit]
+Description=Restart avarc-chatopts-bot Service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart avarc-chatopts-bot.service

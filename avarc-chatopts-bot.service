@@ -1,0 +1,23 @@
+[Unit]
+Description=AvArc chatops bot on Mattermost
+Requires=docker.service
+After=docker.service nginx-proxy.service nginx-proxy-acme-companion.service
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+TimeoutStartSec=15min
+StartLimitInterval=120
+StartLimitBurst=3
+EnvironmentFile=/etc/environment
+
+# Start the service
+ExecStart=/root/avarc-chatops-bot/run.sh up
+
+# Stop the service
+ExecStop=/root/avarc-chatops-bot/run.sh down
+
+[Install]
+WantedBy=multi-user.target
+
