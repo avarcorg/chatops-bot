@@ -38,19 +38,20 @@ if not logger.hasHandlers():  # To prevent adding multiple handlers if reloaded
     logger.addHandler(console_handler)
 
 def is_direct_message(words=None):
-    if words is not None:
-        logging.info(f"is_direct_message: list of words: {words}")
-        return "avarc-chatops-bot" in words[0].lower()
+    logging.info(f"is_direct_message: list of words: {words}")
+    return words[0].lower().startswith("avarc-chatops-bot")
 
 def contains_hello_keyword(words=None):
-    if words is not None:
-        # logging.info(f"contains_hello_keyword: list of words: {words}")
-        return any(word == "hello" for word in words)
+    # logging.info(f"contains_hello_keyword: list of words: {words}")
+    return any(word == "hello" for word in words)
 
 def contains_help_keyword(words=None):
-    if words is not None:
-        # logging.info(f"contains_help_keyword: list of words: {words}")
-        return any(word == "help" for word in words)
+    # logging.info(f"contains_help_keyword: list of words: {words}")
+    return any(word == "help" for word in words)
+
+def contains_restart_keyword(words=None):
+    # logging.info(f"contains_restart_keyword: list of words: {words}")
+    return any(word == "restart" for word in words)
 
 def handle_message(driver, post_data):
     """Process a new message."""
@@ -72,9 +73,15 @@ def handle_message(driver, post_data):
 
         # Split the message into parts (by whitespace) and store in the "words" array
         words = message_text.lower().split()
+        if words is None:
+            words = []
+
+        logging.info(f"incoming message: list of words: {words}")
 
         if is_direct_message(words):
-            response = "Are you talking to me? :rocket:"
+            response = "Are you talking to me :thinking_face: :question:"
+        elif contains_restart_keyword(words):
+            response += "What should I restart :question:"
 
         if response:
             response += "\n"
@@ -82,9 +89,11 @@ def handle_message(driver, post_data):
         if contains_help_keyword(words):
             response += "Here are the commands I respond to: ..."
             response += "\n"
-            response += "  hello - try it :wink:"
+            response += "  hello - Try it :wink:"
             response += "\n"
             response += "  help - This message :nerd_face:"
+            response += "\n"
+            response += "  restart - Restart something on the server"
         elif contains_hello_keyword(words):
             response += "... again, General Kenobi :crossed_swords:"
 
