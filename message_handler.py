@@ -81,6 +81,10 @@ def handle_message(driver, post_data):
 
         if contains_help_keyword(words):
             response += "Here are the commands I respond to: ..."
+            response += "\n"
+            response += "  hello - try it :wink:"
+            response += "\n"
+            response += "  help - This message :nerd_face:"
         elif contains_hello_keyword(words):
             response += "... again, General Kenobi :crossed_swords:"
 
