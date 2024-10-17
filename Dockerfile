@@ -25,14 +25,23 @@ LABEL org.opencontainers.image.revision="${GIT_COMMIT_SHA}"
 LABEL org.opencontainers.image.documentation="https://github.com/${GITHUB_REPOSITORY}/wiki"
 LABEL org.opencontainers.image.created="${CREATED}"
 
+# Create non-privileged user
+RUN adduser --home /opt/app --system app
+
 # Set the working directory in the container
-WORKDIR /usr/src/app
+WORKDIR /opt/app
 
 # Copy the requirements.txt file into the container
 COPY requirements.txt .
 
 # Install any necessary dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Now, give everything to non-privileged user
+RUN chown app /opt/app
+
+# From here on, run as non-privileged one
+USER app
 
 # Copy the current directory contents into the container
 COPY . .
