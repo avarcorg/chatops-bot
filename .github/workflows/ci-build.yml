@@ -19,13 +19,13 @@ jobs:
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
       - name: Set up Pack CLI
-        uses: buildpacks/github-actions/setup-pack@v5.10.0
+        uses: buildpacks/github-actions/setup-pack@v5.11.0
 
       - name: Display Pack CLI
         run: pack --version
 
       - name: Set up Pack Tools
-        uses: buildpacks/github-actions/setup-tools@v5.10.0
+        uses: buildpacks/github-actions/setup-tools@v5.11.0
 
       - name: Display Pack Tools
         run: yj -v
