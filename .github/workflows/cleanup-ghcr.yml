@@ -33,7 +33,7 @@ jobs:
           echo "GitHub CLI is set up with GH_TOKEN"
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
